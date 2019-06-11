@@ -1,0 +1,535 @@
+<?php
+
+session_start();
+if (isset($_GET["sub"])) {
+	require("../db_conf.php");
+	require "../fpdf17/fpdf.php";
+
+	if ($_GET["sub"] == "urkundeAuto") {
+
+		if (isset($_SESSION["valueArray"])) {
+			$date = $_SESSION["date"];
+
+			$valueArray = $_SESSION["valueArray"];        //unten alle werte in mulitdemensionalem array gespeichert
+			//AUSWERTUNG und erstellen der Urkunden!
+
+			$pdf = new FPDF();
+
+			$pdf->SetFont('Arial', '', 16);
+
+			if (isset($wert)) {
+				$LastWert = $wert;
+				$LastPosition = $position;
+			}
+
+			$diszQuery = mysqli_query($GLOBALS["dbConnection"], "SELECT bezeichnung,einheit,picture FROM disziplin WHERE id = " . $_SESSION["disz_id"]);
+			if ($row = mysqli_fetch_assoc($diszQuery)) {
+				$diszBez = $row["bezeichnung"];
+				$diszEinheit = $row["einheit"];
+				$diszPic = $row["picture"];
+			}
+			
+			$position = 0;
+			$offset = 1;
+			$lastValue = 0;
+			for($i = 0; $i < count($valueArray); $i++) {
+				$studentID = $valueArray[$i][0];
+				$value = $valueArray[$i][1];
+				if($lastValue != $value) {
+					$position = $position + $offset;
+					$offset = 1;
+				} else {
+					$offset++;
+				}
+
+				$lastValue = $value;
+
+				$studQuery = mysqli_query($GLOBALS["dbConnection"], "SELECT vname,nname,geschlecht,klasse_id FROM schueler WHERE id = " . $studentID);
+				if ($row = mysqli_fetch_assoc($studQuery)) {
+					$vorname = $row["vname"];
+					$nachname = $row["nname"];
+					$geschlecht = $row["geschlecht"];
+					if ($geschlecht == "M") {
+						$geschlechtOut = "männlich";
+					} else {
+						$geschlechtOut = "weiblich";
+					}
+					$klassen_id = $row["klasse_id"];
+
+					$kQuery = mysqli_query($GLOBALS["dbConnection"], "SELECT klassenstufe_id,klasse FROM klasse WHERE id = $klassen_id");
+					if ($row = mysqli_fetch_assoc($kQuery)) {
+						$klasse = $row["klasse"];
+						$ksID = $row["klassenstufe_id"];
+
+						$ksQuery = mysqli_query($GLOBALS["dbConnection"], "SELECT nummer FROM klassenstufen WHERE id = $ksID");
+						if ($row = mysqli_fetch_assoc($ksQuery)) {
+							$ksNum = $row["nummer"];
+						}
+					}
+				}
+
+
+					$pdf->AddPage();
+
+						$pdf->SetFont('Arial','',40);
+						$pdf->SetFont('Times','',96);
+						// $pdf->Image('pics/brille.png',5,5,35,0);
+						$pdf->SetY(40);
+						$pdf->Cell(0,0,'Urkunde',0,2,'C');
+						$pdf->SetFont('Times','',26);
+						$pdf->SetY(64);
+						$pdf->Cell(0,0,'Bertolt-Brecht-Gymnasium',0,2,'C');
+						$pdf->SetY(82);
+						$pdf->SetFont('Times','B',26);
+						$pdf->Cell(0,0,utf8_decode($diszBez),0,2,'C');
+						if($diszPic != null && $diszPic != "") {
+							if($diszPic == "weitsprung.jpg") {
+								$pdf->Image('../bilder/'.$diszPic,15,90,0,90);
+							} else {
+								$pdf->Image('../bilder/'.$diszPic,65,100,0,90);
+							}
+						}
+						$pdf->SetFont('Times','',30);
+						$pdf->SetY(190);
+						$pdf->Cell(0,0,$position.'. Platz',0,2,'C');
+						$pdf->SetY(205);
+						//FAB: HIER HAT ADRIAN GEÄNDERT
+						//$pdf->Cell(0,0,utf8_decode($vorname).' '.utf8_decode($nachname),0,2,'C');
+						$pdf->Cell(0,0,$vorname.' '.$nachname,0,2,'C');
+						$pdf->SetY(220);
+						$pdf->Cell(0,0,'Klasse '.$ksNum.'/'.$klasse,0,2,'C');
+						$pdf->SetY(235);
+						$pdf->Cell(0,0,$value.' '.$diszEinheit,0,2,'C');
+
+						$pdf->SetFont('Times','',10);
+						$pdf->Image('pics/U-1.png',35,248,25,0);
+						$pdf->Image('pics/U-2.png',155,248,25,0);
+						$pdf->SetY(258);
+						$pdf->SetX(30);
+						$pdf->Cell(0,0,'____________________',0,2,'');
+						$pdf->SetX(145);
+						$pdf->Cell(0,0,'_______________________',0,2,'');
+						$pdf->SetY(264);
+						$pdf->SetX(35);
+						$pdf->SetFont('Times','',13);
+						$pdf->Cell(0,0,'Schulleiter',0,2,'');
+						$pdf->SetX(145);
+						$pdf->Cell(0,0,'Sportfachschaftsleiter',0,2,'');
+
+						$pdf->SetY(270);
+						$pdf->Cell(0,0,'Dresden, '.$date,0,2,'C');
+				}
+
+				$pdf->Output();
+
+			}
+		}
+
+		if($_GET["sub"] == "urkundeManuell") {
+			$date			= $_SESSION["manUrkunde"]["date"];
+			$numUrkunden	= $_SESSION["manUrkunde"]["numUrkunde"];
+			$diszName		= $_SESSION["manUrkunde"]["diszName"];
+			$picture		= $_SESSION["manUrkunde"]["picture"];
+
+			//echo $diszName;
+			$pdf = new FPDF();
+
+			for($i = 1; $i <= $numUrkunden; $i++) {
+				$position	= $_SESSION["manUrkunde"][$i][0];
+				$klasse		= $_SESSION["manUrkunde"][$i][1];
+				$name		= $_SESSION["manUrkunde"][$i][2];
+				$wert		= $_SESSION["manUrkunde"][$i][3];
+
+				$pdf->AddPage();
+				$pdf->SetFont('Times','',96);
+				// $pdf->Image('pics/brille.png',5,5,35,0);
+				$pdf->SetY(40);
+				$pdf->Cell(0,0,'Urkunde',0,2,'C');
+				$pdf->SetFont('Times','',26);
+				$pdf->SetY(64);
+				$pdf->Cell(0,0,'Bertolt-Brecht-Gymnasium',0,2,'C');
+				$pdf->SetY(82);
+				$pdf->SetFont('Times','B',26);
+				$pdf->Cell(0,0,utf8_decode($diszName),0,2,'C');
+				if($picture != null && $picture != "") {
+					$pdf->Image('../bilder/'.$picture,65,100,0,90);
+				}
+
+				$angaben	= 0;
+
+				if($name 	 != "") {  $angaben++; }
+				if($klasse 	 != "") { $angaben++; }
+				if($wert 	 != "") { $angaben++; }
+				if($position != "") { $angaben++; }
+
+				if($angaben > 2) {
+					$yPlus	= "13";
+					$pdf->SetFont('Times','',26);
+				} else {
+
+					$yPlus	= "20";
+					$pdf->SetFont('Times','',36);
+				}
+
+				$y	= 205;
+				$pdf->SetY($y);
+				$pdf->Cell(0,0,$position.'. Platz',0,2,'C');
+				if($name != "") {
+					$y = $y+$yPlus;
+					$pdf->SetY($y);
+					$pdf->Cell(0,0,utf8_encode($name),0,2,'C');
+				}
+				if($klasse != "") {
+					$y = $y+$yPlus;
+					$pdf->SetY($y);
+					$pdf->Cell(0,0,"Klasse ".$klasse,0,2,'C');
+				}
+				if($wert != "") {
+					$y = $y+$yPlus;
+					$pdf->SetY($y);
+					$pdf->Cell(0,0,$wert,0,2,'C');
+				}
+
+				$pdf->SetFont('Times','',10);
+				$pdf->Image('pics/U-1.png',35,248,25,0);
+				$pdf->Image('pics/U-2.png',155,248,25,0);
+				$pdf->SetY(258);
+				$pdf->SetX(30);
+				$pdf->Cell(0,0,'____________________',0,2,'');
+				$pdf->SetX(145);
+				$pdf->Cell(0,0,'_______________________',0,2,'');
+				$pdf->SetY(264);
+				$pdf->SetX(35);
+				$pdf->SetFont('Times','',13);
+				$pdf->Cell(0,0,'Schulleiter',0,2,'');
+				$pdf->SetX(145);
+				$pdf->Cell(0,0,'Sportfachschaftsleiter',0,2,'');
+
+				$pdf->SetY(270);
+				$pdf->Cell(0,0,'Dresden, '.$date,0,2,'C');
+
+			}
+
+			$pdf->Output();
+
+		}
+
+		die;
+	}
+
+
+		?>
+
+			<script type="text/javascript">
+				function DiszSelection() {
+					var ks_id	= document.getElementById("klassenstufeID").value;
+					var xmlhttp;
+					if (window.XMLHttpRequest) {
+					    // AJAX nutzen mit IE7+, Chrome, Firefox, Safari, Opera
+						xmlhttp = new XMLHttpRequest();
+					} else {
+					    // AJAX mit IE6, IE5
+						xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+					}
+					xmlhttp.onreadystatechange=function() {
+						if (xmlhttp.readyState==4 && xmlhttp.status==200) {
+							document.getElementById("disziplin").innerHTML=xmlhttp.responseText;
+						}
+					}
+
+					xmlhttp.open("GET","xmlhttp_index.php?con=disziplin_query&ksid="+ks_id,true);
+					xmlhttp.send();
+				}
+
+				function OpenNewWindowAuto() {
+					window.open("content/createPDF.php?sub=urkundeAuto");
+				}
+
+				function OpenNewWindowManu() {
+					window.open("content/createPDF.php?sub=urkundeManuell");
+				}
+
+				function genRows() {
+					var numUrkunden	= document.getElementById("numUrkunden").value;
+					var output	= "<table><tr><td>Position</td><td>Klasse</td><td>Name</td><td>Wert</td></tr>";
+					for (var i=1; i <= numUrkunden; i++) {
+					  output	= output+"<tr><td><input type='text' name='pos"+i+"'/></td>";
+					  output	= output+"<td><input type='text' name='klasse"+i+"'/></td>";
+					  output	= output+"<td><input type='text' name='name"+i+"'/></td>";
+					  output	= output+"<td><input type='text' name='wert"+i+"'/></td></tr>";
+					};
+					output = output+"</table>";
+					document.getElementById("inputRowsManuell").innerHTML = output;
+				}
+
+			</script>
+
+		<form action="index.php?con=createPDF" method='POST'>
+			<?php
+				echo "<table>";
+					echo "<tr>";
+						echo "<td>";
+							echo "<input type='radio' name='urkundenMode' value='autogen' checked/>";
+						echo "</td>";
+						echo "<td>";
+							echo "<p>Werte Automatisch berechnen lassen und ausgeben (f&uuml;r Disziplinwerte)</p>";
+
+
+							$kQuery	= mysqli_query($GLOBALS["dbConnection"], "SELECT * FROM klassenstufen ORDER BY nummer");
+
+							echo "<table>";
+								echo "<tr>";
+									echo "<td>Klassenstufe: </td>";
+									echo "<td>";
+										echo "<select id='klassenstufeID' name='klassenstufe' onchange='DiszSelection()'>";
+											while($row 	= mysqli_fetch_assoc($kQuery)) {
+												$kID	= $row["id"];
+												$kNum	= $row["nummer"];
+
+												echo "<option value='".$kID."'>".$kNum."</option>";
+											}
+										echo "</select>";
+									echo "</td>";
+							echo "</tr><tr>";
+								echo "<td>Disziplin: </td>";
+								echo "<td>";
+									echo "<select id='disziplin' name='disz'>";
+
+									echo "</select>";
+								echo "</td>";
+							echo "</tr><tr>";
+								echo "<td>Geschlecht: </td>";
+								echo "<td>";
+									echo "<select name='sex'>";
+										echo "<option value='W'>Mädchen</option>";
+										echo "<option value='M'>Jungs</option>";
+									echo "</select>";
+								echo "</td>";
+							echo "</tr><tr>";
+
+							echo "<td>Urkunde für die Besten: </td>";
+							echo "<td>";
+								echo "<select name='numPeople'>";
+									for($i = 1; $i <= 20; $i++) {
+										echo "<option value='".$i."'>".$i."</option>";
+									}
+								echo "</select>";
+							echo "</td>";
+						echo "</tr><tr>";
+							echo "<td>Datum: </td>";
+							echo "<td>";
+								echo "<input type='text' name='dateSportfest' />";
+							echo "</td>";
+						echo "</tr><tr>";
+							echo "<td colspan='2'>";
+								echo "<input type='submit' />";
+							echo "</td>";
+						echo "</tr>";
+					echo "</table>";
+				echo "</form>";
+			echo "</td>";
+		echo "</tr><tr>";
+			echo "<td>";
+				echo "<input type='radio' name='urkundenMode' value='manuell'/>";
+			echo "</td>";
+			echo "<td>";
+				echo "<p>Werte manuell eingeben</p>";
+				echo "<form action='index.php?con=createPDF' method='POST'>";
+					echo "<table>";
+						echo "<tr>";
+							echo "<td>";
+								echo "Anzahl der Urkunden: ";
+							echo "</td><td>";
+								echo "<input type='number' id='numUrkunden' name='numUrkunden' onchange='genRows();' />";
+							echo "</td>";
+						echo "</tr><tr>";
+							echo "<td>";
+								echo "Disziplin Name:";
+							echo "</td><td>";
+								echo "<input type='text' name='diszName' />";
+							echo "</td>";
+						echo "</tr><tr>";
+							echo "<td>Bild: </td>";
+							echo "<td>";
+								echo "<select name='picture'>";
+									echo "<option value=''>---</option>";
+									if ($handle = opendir('bilder/')) {
+									    while (false !== ($entry = readdir($handle))) {
+									    	if($entry != "." && $entry != "..") {
+									       		echo "<option value='$entry'>$entry</option>";
+									       	}
+									    }
+									}
+								echo "</select>";
+							echo "</td>";
+						echo "</tr>";
+						echo "<tr>";
+							echo "<td>Datum: </td>";
+							echo "<td>";
+								echo "<input type='text' name='dateSportfest' />";
+							echo "</td>";
+						echo "</tr>";
+						echo "<tr>";
+							echo "<td colspan='2'>";
+								echo "<span id='inputRowsManuell'> </span>";
+							echo "</td>";
+						echo "</tr>";
+					echo "</table>";
+					echo "<input type='submit' />";
+				echo "</form>";
+			echo "</td>";
+		echo "</tr>";
+	echo "</table>";
+
+		if(isset($_POST["numUrkunden"])) {
+			$numUrkunden	= $_POST["numUrkunden"];
+			$diszName		= $_POST["diszName"];
+			$picture		= $_POST["picture"];
+			$date			= $_POST["dateSportfest"];
+
+			$_SESSION["manUrkunde"] = array();
+
+			$_SESSION["manUrkunde"]["numUrkunde"]	= $numUrkunden;
+			$_SESSION["manUrkunde"]["diszName"]		= $diszName;
+			$_SESSION["manUrkunde"]["picture"]		= $picture;
+			$_SESSION["manUrkunde"]["date"]			= $date;
+
+			for($i = 1; $i <= $numUrkunden; $i++) {
+				$position	= $_POST["pos".$i];
+				$klasse		= $_POST["klasse".$i];
+				
+				//FAB: hier ist auch das mit dem UTF-8 geändert:
+				//Original war: $name		= $_POST["name".$i];
+				$name		= utf8_decode($_POST["name".$i]);
+				$wert		= $_POST["wert".$i];
+
+				$_SESSION["manUrkunde"][$i] = array($position, $klasse, $name, $wert);
+			}
+
+			echo "<p>Werte erfolgreich übernommen, klicken sie auf 'PDF erstellen' um die Urkunden zu erstellen</p>";
+			echo "<input type='button' value='PDF erstellen' onclick='OpenNewWindowManu()' />";
+
+		}
+
+		if(isset($_POST["klassenstufe"])) {
+			$ksID				= $_POST["klassenstufe"];
+			$diszID				= $_POST["disz"];
+			$diszSex			= $_POST["sex"];
+			$NumPeo				= $_POST["numPeople"];
+			$date				= $_POST["dateSportfest"];
+			$check	= 0;
+
+			$ksQuery = mysqli_query($GLOBALS["dbConnection"], "SELECT nummer FROM klassenstufen WHERE id = " . $ksID);
+			if($row = mysqli_fetch_assoc($ksQuery)) {
+				$goalClassLevel = $row["nummer"];
+			}
+
+			$diszQuery	= mysqli_query($GLOBALS["dbConnection"], "SELECT bezeichnung,einheit,ordering FROM disziplin WHERE id=$diszID");
+			if($row = mysqli_fetch_assoc($diszQuery)) {
+				$diszBezeich	= $row["bezeichnung"];
+				$diszEinheit 	= $row["einheit"];
+				$diszOrdering	= $row["ordering"];
+				$check++;
+			}
+
+			/*$KlassenQuery	= mysqli_query($GLOBALS["dbConnection"], "SELECT * FROM klasse WHERE klassenstufe_id='$ksID' ORDER BY klasse");
+			if($check == 1) {
+				while($row = mysqli_fetch_assoc($KlassenQuery)) {
+					if(isset($kString)) {
+						$kString .= ",".$row["id"];
+					} else {
+						$kString = $row["id"];
+						$check++;
+					}
+				}
+			}
+			$studentQuery	= mysqli_query($GLOBALS["dbConnection"], "SELECT id FROM schueler WHERE klasse_id in ($kString) AND geschlecht = '$diszSex'");
+			if($check == 2) {
+				while($row = mysqli_fetch_assoc($studentQuery)) {
+					if(isset($studentString)) {
+						$studentString .= ",".$row["id"];
+					} else {
+						$studentString = $row["id"];
+						$check++;
+					}
+				}
+			}*/
+
+			//get klassenstufe of all students, add them to array if they fit our filter
+			$studentArray = array();
+			$studentQuery = mysqli_query($GLOBALS["dbConnection"], "SELECT id,klasse_id,klassenplus,vname,nname FROM schueler WHERE geschlecht = '" . $diszSex . "'");
+			while($row = mysqli_fetch_assoc($studentQuery)) {
+				//get classLevelId by klass_id
+				$classLevelIDQuery = mysqli_query($GLOBALS["dbConnection"], "SELECT klassenstufe_id FROM klasse WHERE id = " . $row["klasse_id"]);
+				if($row1 = mysqli_fetch_assoc($classLevelIDQuery)) {
+					$classLevelQuery = mysqli_query($GLOBALS["dbConnection"], "SELECT nummer FROM klassenstufen WHERE id = " . $row1["klassenstufe_id"]);
+					if($row2 = mysqli_fetch_assoc($classLevelQuery)) {
+						$classLevel = $row2["nummer"];
+
+						$realClassLevel = $classLevel + $row["klassenplus"];
+						if($realClassLevel == $goalClassLevel) {
+							$studentArray[$row["id"]] = array($row["vname"], $row["nname"]);
+							if(!isset($studentString)) {
+								$studentString = " " . $row["id"];
+							} else {
+								$studentString .= ", " . $row["id"];
+							}
+						}
+					}
+				}
+			}
+
+			$valueArray = array();
+			//HIER HAT ADRIAN GESUCHT; $diszOrder funktioniert, aber sortiert STRINGS statt FLOATS
+			// if ($diszOrdering=='ASC') $diszOrdering=' CONVERT(wert, DECIMAL) ' 
+			$query = "SELECT wert,schueler_id FROM werte WHERE schueler_id IN(" . $studentString . ") AND disziplin_id = '" . $diszID . "' ORDER BY wert " . $diszOrdering . " LIMIT " . $NumPeo;
+			$valueQuery = mysqli_query($GLOBALS["dbConnection"], $query);
+
+			$position = 0;
+			$offset = 1;
+			$lastValue = 0;
+
+			echo "<br/>";
+			echo "<table>";
+			while($row = mysqli_fetch_assoc($valueQuery)) {
+				$studentID = $row["schueler_id"];
+				array_push($valueArray, array($row["schueler_id"], $row["wert"]));
+
+				if($lastValue == $row["wert"]) {
+					$offset++;
+				} else {
+					$position = $position + $offset;
+					$offset = 1;
+				}
+				$value = $valueArray[$i][1];
+
+				$lastValue = $row["wert"];
+
+				echo "<tr>";
+					echo "<td>";
+						echo $position;
+					echo "</td>";
+					echo "<td>";
+						echo $studentArray[$studentID][0];
+					echo "</td>";
+					echo "<td>";
+						echo $studentArray[$studentID][1];
+					echo "</td>";
+					echo "<td>";
+						echo $row["wert"];
+					echo "</td>";
+				echo "</tr>";
+
+			}
+			echo "</table>";
+
+			$_SESSION["valueArray"]	= $valueArray;
+			$_SESSION["date"]		= $date;
+			$_SESSION["disz_id"]	= $diszID;
+			
+			echo "<p>Werte erfolgreich übernommen, klicken sie auf 'PDF erstellen' um die Urkunden zu erstellen</p>";
+			echo "<input type='button' value='PDF erstellen' onclick='OpenNewWindowAuto();' />";
+		}
+
+
+?>
